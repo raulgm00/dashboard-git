@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-08 23:10:06
+// Generado automáticamente - 2026-06-08 23:14:40
 const DASHBOARD_DATA = {
-    "last_updated": "08/06/2026 23:10:06",
+    "last_updated": "08/06/2026 23:14:40",
     "storage_limit_gb": 10.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "mis-archivos-grandes-git",
@@ -209,11 +209,11 @@ const DASHBOARD_DATA = {
         {
             "name": "dashboard-git",
             "branch": "main",
-            "status": "clean",
+            "status": "dirty",
             "remote_status": "synced",
             "ahead_count": 0,
             "behind_count": 0,
-            "uncommitted_changes_count": 0,
+            "uncommitted_changes_count": 1,
             "is_dubious": false,
             "error": null
         },
@@ -1931,5 +1931,6 @@ const DASHBOARD_DATA = {
             "s3_key": "uploads/propuestas-wesoft/proyecto-personal/Compra_Web/Ballicons_2_Free (2)/__MACOSX/Ballicons 2 Free/._license.pdf",
             "uploaded": true
         }
-    ]
+    ],
+    "reset_day_of_month": 8
 };
