@@ -1,10 +1,10 @@
-// Generado automáticamente - 2026-06-08 23:53:33
+// Generado automáticamente - 2026-06-08 23:54:16
 const DASHBOARD_DATA = {
-    "last_updated": "08/06/2026 23:53:33",
-    "storage_limit_gb": 10.0,
+    "last_updated": "08/06/2026 23:54:16",
+    "storage_limit_gb": 20.0,
     "storage_used_bytes": 11465934168,
-    "s3_bucket": "mis-archivos-grandes-git",
-    "s3_endpoint": "s3.us-west-2.idrivee2.com",
+    "s3_bucket": "Multi-cuenta consolidado",
+    "s3_endpoint": "Multi-endpoint",
     "region": "us-west-2",
     "files_count": 177,
     "repositories": [
@@ -2289,10 +2289,17 @@ const DASHBOARD_DATA = {
     "reset_day_of_month": 1,
     "accounts": [
         {
-            "name": "parámetros-consola",
+            "name": "idrive-cuenta-1",
             "bucket": "mis-archivos-grandes-git",
             "endpoint": "s3.us-west-2.idrivee2.com",
             "used_bytes": 11465934168,
+            "limit_gb": 10.0
+        },
+        {
+            "name": "idrive-cuenta-2",
+            "bucket": "mis-archivos-grandes-git-2",
+            "endpoint": "s3.us-west-2.idrivee2.com",
+            "used_bytes": 0,
             "limit_gb": 10.0
         }
     ]
