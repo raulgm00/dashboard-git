@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-09 00:38:06
+// Generado automáticamente - 2026-06-09 00:49:58
 const DASHBOARD_DATA = {
-    "last_updated": "09/06/2026 00:38:06",
+    "last_updated": "09/06/2026 00:49:58",
     "storage_limit_gb": 30.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "Multi-cuenta consolidado",
