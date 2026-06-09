@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-09 00:24:01
+// Generado automáticamente - 2026-06-09 00:34:53
 const DASHBOARD_DATA = {
-    "last_updated": "09/06/2026 00:24:01",
+    "last_updated": "09/06/2026 00:34:53",
     "storage_limit_gb": 30.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "Multi-cuenta consolidado",
@@ -209,11 +209,11 @@ const DASHBOARD_DATA = {
         {
             "name": "dashboard-git",
             "branch": "main",
-            "status": "clean",
+            "status": "dirty",
             "remote_status": "synced",
             "ahead_count": 0,
             "behind_count": 0,
-            "uncommitted_changes_count": 0,
+            "uncommitted_changes_count": 1,
             "is_dubious": false,
             "error": null
         },
@@ -2286,28 +2286,31 @@ const DASHBOARD_DATA = {
             "uploaded": true
         }
     ],
-    "reset_day_of_month": 1,
+    "reset_day_of_month": 8,
     "accounts": [
         {
             "name": "idrive-cuenta-1",
             "bucket": "mis-archivos-grandes-git",
             "endpoint": "s3.us-west-2.idrivee2.com",
             "used_bytes": 11465934168,
-            "limit_gb": 10.0
+            "limit_gb": 10.0,
+            "reset_day": 8
         },
         {
             "name": "idrive-cuenta-2",
             "bucket": "mis-archivos-grandes-git-2",
             "endpoint": "s3.us-west-2.idrivee2.com",
             "used_bytes": 0,
-            "limit_gb": 10.0
+            "limit_gb": 10.0,
+            "reset_day": 8
         },
         {
             "name": "idrive-cuenta-3",
             "bucket": "mis-archivos-grandes-git-3",
             "endpoint": "s3.us-west-2.idrivee2.com",
             "used_bytes": 0,
-            "limit_gb": 10.0
+            "limit_gb": 10.0,
+            "reset_day": 8
         }
     ]
 };
