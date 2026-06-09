@@ -2,723 +2,819 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Git Storage & S3 Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#07070f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Git S3 Dashboard · Akio Dev</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;600&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-color: #0b0b14;
-            --card-bg: rgba(22, 22, 38, 0.7);
-            --card-border: rgba(255, 255, 255, 0.06);
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --primary: #8b5cf6;
-            --primary-glow: rgba(139, 92, 246, 0.15);
-            --success: #10b981;
-            --success-glow: rgba(16, 185, 129, 0.1);
-            --warning: #f59e0b;
-            --warning-glow: rgba(245, 158, 11, 0.1);
-            --danger: #ef4444;
-            --danger-glow: rgba(239, 68, 68, 0.1);
-            --info: #06b6d4;
-            --info-glow: rgba(6, 182, 212, 0.1);
-            --card-radius: 16px;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* ── Reset & Tokens ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+        --bg:          #07070f;
+        --bg2:         #0d0d1a;
+        --surface:     rgba(255,255,255,0.035);
+        --surface-h:   rgba(255,255,255,0.07);
+        --border:      rgba(255,255,255,0.07);
+        --border-h:    rgba(139,92,246,0.4);
+        --text:        #f0f0ff;
+        --muted:       #6b7280;
+        --muted2:      #4b5563;
+        --primary:     #8b5cf6;
+        --primary-d:   #6d28d9;
+        --primary-glow:rgba(139,92,246,0.18);
+        --cyan:        #22d3ee;
+        --cyan-glow:   rgba(34,211,238,0.12);
+        --green:       #10b981;
+        --green-glow:  rgba(16,185,129,0.12);
+        --yellow:      #f59e0b;
+        --yellow-glow: rgba(245,158,11,0.12);
+        --red:         #ef4444;
+        --red-glow:    rgba(239,68,68,0.12);
+        --r:           14px;
+        --r-sm:        8px;
+        --font:        'Inter', system-ui, sans-serif;
+        --mono:        'Geist Mono', monospace;
+    }
 
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-main);
-            min-height: 100vh;
-            padding: 2rem;
-            background-image:
-                radial-gradient(circle at 10% 20%, rgba(99,102,241,0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(139,92,246,0.05) 0%, transparent 40%);
-            background-attachment: fixed;
-        }
+    html { scroll-behavior: smooth; }
 
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2.5rem;
-            border-bottom: 1px solid var(--card-border);
-            padding-bottom: 1.5rem;
-        }
-        h1 {
-            font-family: 'Outfit', sans-serif;
-            font-size: 2rem;
-            font-weight: 800;
-            background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .update-time {
-            font-size: 0.85rem;
-            color: var(--text-muted);
-            background: rgba(255,255,255,0.03);
-            padding: 0.5rem 1rem;
-            border-radius: 50px;
-            border: 1px solid var(--card-border);
-        }
+    body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+        overflow-x: hidden;
+        /* safe area for notch phones */
+        padding-bottom: env(safe-area-inset-bottom, 0);
+    }
 
-        /* Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2.5rem;
-        }
-        .card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--card-radius);
-            padding: 1.75rem;
-            backdrop-filter: blur(12px);
-            position: relative;
-            overflow: hidden;
-        }
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 4px;
-            background: transparent;
-        }
-        .card.primary::before { background: var(--primary); }
-        .card.success::before { background: var(--success); }
-        .card.warning::before { background: var(--warning); }
-        .card.danger::before  { background: var(--danger); }
-        .card.info::before    { background: var(--info); }
+    /* ── Noise texture overlay ─────────────────────────────────────────── */
+    body::before {
+        content: '';
+        position: fixed;
+        inset: 0;
+        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+        pointer-events: none;
+        z-index: 0;
+    }
 
-        .card-title {
-            font-size: 0.9rem;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: var(--text-muted);
-            margin-bottom: 1.25rem;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+    /* ── Ambient blobs ─────────────────────────────────────────────────── */
+    .blob {
+        position: fixed;
+        border-radius: 50%;
+        filter: blur(80px);
+        pointer-events: none;
+        z-index: 0;
+        animation: drift 18s ease-in-out infinite alternate;
+    }
+    .blob-1 { width: 500px; height: 500px; background: rgba(99,102,241,0.07); top: -100px; left: -100px; }
+    .blob-2 { width: 400px; height: 400px; background: rgba(139,92,246,0.06); bottom: 10%; right: -80px; animation-delay: -6s; }
+    .blob-3 { width: 300px; height: 300px; background: rgba(34,211,238,0.04); top: 40%; left: 40%; animation-delay: -12s; }
+    @keyframes drift { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,20px) scale(1.08); } }
 
-        /* Gauge */
-        .gauge-container { display: flex; align-items: center; gap: 1.5rem; }
-        .circle-gauge { width: 100px; height: 100px; position: relative; }
-        .circle-gauge svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-        .circle-bg { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 8; }
-        .circle-progress {
-            fill: none; stroke: var(--primary); stroke-width: 8;
-            stroke-linecap: round;
-            stroke-dasharray: 283;
-            stroke-dashoffset: 283;
-            transition: stroke-dashoffset 1s ease-in-out;
-        }
-        .gauge-value {
-            position: absolute; top: 50%; left: 50%;
-            transform: translate(-50%, -50%);
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.25rem; font-weight: 700;
-        }
-        .gauge-info { flex-grow: 1; }
-        .gauge-info .amount { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .gauge-info .limit { font-size: 0.85rem; color: var(--text-muted); }
+    /* ── Wrapper ────────────────────────────────────────────────────────── */
+    .wrapper {
+        position: relative;
+        z-index: 1;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 1.5rem 1.25rem;
+    }
+    @media (min-width: 768px) { .wrapper { padding: 2rem 2rem; } }
+    @media (min-width: 1024px) { .wrapper { padding: 2.5rem 2.5rem; } }
 
-        /* Warning banner */
-        .warning-banner {
-            margin-top: 1rem; padding: 0.75rem 1rem;
-            border-radius: 8px; font-size: 0.85rem; font-weight: 600;
-            display: none;
-        }
-        .warning-banner.show { display: block; }
-        .warning-banner.alert-yellow { background: var(--warning-glow); border: 1px solid rgba(245,158,11,0.2); color: var(--warning); }
-        .warning-banner.alert-red    { background: var(--danger-glow);  border: 1px solid rgba(239,68,68,0.2);  color: var(--danger); }
+    /* ── Header ─────────────────────────────────────────────────────────── */
+    header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    .logo-area h1 {
+        font-size: clamp(1.3rem, 5vw, 2rem);
+        font-weight: 800;
+        letter-spacing: -0.03em;
+        background: linear-gradient(135deg, #c4b5fd 0%, #8b5cf6 50%, #22d3ee 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        line-height: 1.15;
+    }
+    .logo-area p {
+        font-size: 0.82rem;
+        color: var(--muted);
+        margin-top: 0.25rem;
+    }
+    .timestamp-pill {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 50px;
+        padding: 0.45rem 1rem;
+        font-size: 0.78rem;
+        color: var(--muted);
+        white-space: nowrap;
+        backdrop-filter: blur(12px);
+        flex-shrink: 0;
+        align-self: flex-start;
+    }
+    .timestamp-pill::before {
+        content: '';
+        width: 7px; height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        box-shadow: 0 0 6px var(--green);
+        animation: pulse 2.5s ease-in-out infinite;
+        flex-shrink: 0;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 
-        /* Stat card */
-        .stat-value { font-family: 'Outfit', sans-serif; font-size: 2.25rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .stat-desc  { font-size: 0.85rem; color: var(--text-muted); }
+    /* ── Cards grid ─────────────────────────────────────────────────────── */
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    @media (min-width: 640px)  { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
 
-        /* Bucket details */
-        .bucket-details { margin-top: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; }
-        .detail-row { display: flex; justify-content: space-between; font-size: 0.8rem; padding: 0.3rem 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
-        .detail-row:last-child { border-bottom: none; }
-        .detail-row span:first-child { color: var(--text-muted); }
+    /* Glass card */
+    .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        padding: 1.5rem;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        position: relative;
+        overflow: hidden;
+        transition: border-color 0.25s, transform 0.25s;
+    }
+    .card:active { transform: scale(0.985); }
+    @media (hover: hover) { .card:hover { border-color: var(--border-h); } }
 
-        /* ── Section header with controls ── */
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 0.75rem;
-            margin-bottom: 1.25rem;
-        }
-        .section-title {
-            font-family: 'Outfit', sans-serif;
-            font-size: 1.3rem; font-weight: 700;
-            display: flex; align-items: center; gap: 0.5rem;
-        }
-        .section-title span.badge {
-            background: rgba(255,255,255,0.05);
-            padding: 0.2rem 0.6rem;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-        .section-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-        }
-        .search-input {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            color: var(--text-main);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 0.85rem;
-            padding: 0.45rem 0.9rem;
-            outline: none;
-            transition: border-color 0.2s;
-            width: 200px;
-        }
-        .search-input:focus { border-color: var(--primary); }
-        .search-input::placeholder { color: var(--text-muted); }
+    /* Gradient top stripe */
+    .card::after {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 1px;
+        background: var(--stripe, linear-gradient(90deg, transparent, rgba(139,92,246,0.6), transparent));
+    }
+    .card.cyan  { --stripe: linear-gradient(90deg, transparent, rgba(34,211,238,0.6), transparent); }
+    .card.green { --stripe: linear-gradient(90deg, transparent, rgba(16,185,129,0.6), transparent); }
+    .card.red   { --stripe: linear-gradient(90deg, transparent, rgba(239,68,68,0.6), transparent); }
+    .card.warn  { --stripe: linear-gradient(90deg, transparent, rgba(245,158,11,0.6), transparent); }
 
-        /* Page size selector */
-        .page-size-select {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            color: var(--text-muted);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 0.8rem;
-            padding: 0.45rem 0.65rem;
-            cursor: pointer;
-            outline: none;
-        }
-        .page-size-select option { background: #1a1a2e; }
+    .card-label {
+        font-size: 0.73rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--muted);
+        margin-bottom: 1rem;
+    }
 
-        /* Pagination */
-        .pagination {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.4rem;
-            margin-top: 1.25rem;
-            flex-wrap: wrap;
-        }
-        .page-btn {
-            background: rgba(255,255,255,0.04);
-            border: 1px solid var(--card-border);
-            border-radius: 7px;
-            color: var(--text-muted);
-            font-size: 0.8rem;
-            padding: 0.35rem 0.7rem;
-            cursor: pointer;
-            transition: all 0.15s;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-        }
-        .page-btn:hover:not(:disabled)  { background: var(--primary-glow); border-color: var(--primary); color: var(--text-main); }
-        .page-btn.active  { background: var(--primary-glow); border-color: var(--primary); color: var(--primary); font-weight: 700; }
-        .page-btn:disabled { opacity: 0.3; cursor: default; }
-        .page-info { font-size: 0.8rem; color: var(--text-muted); padding: 0 0.25rem; }
+    /* ── Gauge ───────────────────────────────────────────────────────────── */
+    .gauge-row { display: flex; align-items: center; gap: 1.25rem; }
+    .gauge-wrap { position: relative; width: 88px; height: 88px; flex-shrink: 0; }
+    .gauge-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+    .g-bg   { fill: none; stroke: rgba(255,255,255,0.04); stroke-width: 7; }
+    .g-prog { fill: none; stroke: var(--primary); stroke-width: 7; stroke-linecap: round;
+              stroke-dasharray: 245; stroke-dashoffset: 245;
+              transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1); }
+    .gauge-pct {
+        position: absolute; inset: 0;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; font-weight: 800; font-family: var(--mono);
+        letter-spacing: -0.04em;
+    }
+    .gauge-info { flex: 1; min-width: 0; }
+    .gauge-used { font-size: 1.5rem; font-weight: 800; font-family: var(--mono); letter-spacing: -0.04em; }
+    .gauge-sub  { font-size: 0.78rem; color: var(--muted); margin-top: 0.2rem; line-height: 1.5; }
+    .gauge-reset { font-size: 0.72rem; color: var(--muted2); margin-top: 0.4rem; }
 
-        /* Repo grid */
-        .repo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 1.25rem;
-        }
-        .repo-card {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: 12px;
-            padding: 1.25rem;
-            transition: transform 0.2s, border-color 0.2s;
-        }
-        .repo-card:hover { transform: translateY(-2px); border-color: rgba(139,92,246,0.25); }
-        .repo-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
-        .repo-name { font-weight: 700; font-size: 1.05rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
-        .repo-branch { font-size: 0.75rem; color: var(--text-muted); background: rgba(255,255,255,0.04); padding: 0.15rem 0.45rem; border-radius: 4px; border: 1px solid var(--card-border); }
-        .repo-badges { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-top: 0.5rem; }
-        .status-badge { font-size: 0.7rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; text-transform: uppercase; }
-        .status-badge.clean-synced { background: var(--success-glow); color: var(--success); border: 1px solid rgba(16,185,129,0.2); }
-        .status-badge.dirty  { background: var(--info-glow);    color: var(--info);    border: 1px solid rgba(6,182,212,0.2); }
-        .status-badge.ahead  { background: var(--warning-glow); color: var(--warning); border: 1px solid rgba(245,158,11,0.2); }
-        .status-badge.behind { background: var(--danger-glow);  color: var(--danger);  border: 1px solid rgba(239,68,68,0.2); }
-        .status-badge.local  { background: rgba(255,255,255,0.03); color: var(--text-muted); border: 1px solid var(--card-border); }
-        .status-badge.dubious{ background: var(--danger-glow); color: #f87171; border: 1px solid rgba(239,68,68,0.3); }
-        .repo-meta { margin-top: 0.75rem; font-size: 0.75rem; color: var(--text-muted); }
+    /* ── Banner ──────────────────────────────────────────────────────────── */
+    .alert-bar {
+        margin-top: 1rem; padding: 0.6rem 0.9rem;
+        border-radius: var(--r-sm); font-size: 0.8rem; font-weight: 600;
+        display: none;
+    }
+    .alert-bar.show   { display: block; }
+    .alert-bar.red    { background: var(--red-glow); border: 1px solid rgba(239,68,68,0.25); color: var(--red); }
+    .alert-bar.yellow { background: var(--yellow-glow); border: 1px solid rgba(245,158,11,0.25); color: var(--yellow); }
 
-        /* Files table */
-        .table-container {
-            background: var(--card-bg);
-            border: 1px solid var(--card-border);
-            border-radius: var(--card-radius);
-            overflow: hidden;
-            backdrop-filter: blur(12px);
-        }
-        table { width: 100%; border-collapse: collapse; text-align: left; }
-        th { background: rgba(255,255,255,0.02); color: var(--text-muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 1rem 1.5rem; border-bottom: 1px solid var(--card-border); }
-        td { padding: 1rem 1.5rem; font-size: 0.85rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
-        tr:last-child td { border-bottom: none; }
-        .file-name { font-weight: 600; color: var(--text-main); }
-        .file-path { font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 0.2rem; }
-        .file-size { font-family: monospace; }
-        .file-status { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; font-weight: 600; }
-        .file-status.uploaded { color: var(--success); }
-        .file-status.transit  { color: var(--warning); }
-        .empty-state { padding: 3rem; text-align: center; color: var(--text-muted); font-size: 0.9rem; }
+    /* ── Bucket accounts list ─────────────────────────────────────────────── */
+    .acc-list { display: flex; flex-direction: column; gap: 0; margin-top: 0.5rem; }
+    .acc-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        align-items: start;
+        gap: 0.5rem;
+        padding: 0.6rem 0;
+        border-bottom: 1px solid var(--border);
+    }
+    .acc-row:last-child { border-bottom: none; }
+    .acc-name { font-size: 0.82rem; font-weight: 600; }
+    .acc-bucket { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-top: 0.1rem; }
+    .acc-reset  { font-size: 0.68rem; color: var(--muted2); margin-top: 0.1rem; }
+    .acc-bar-wrap { width: 100%; height: 4px; background: rgba(255,255,255,0.06); border-radius: 99px; margin-top: 0.4rem; grid-column: 1 / -1; }
+    .acc-bar-fill { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(.4,0,.2,1); }
 
-        /* spacer between sections */
-        .section-wrap { margin-bottom: 3rem; }
+    /* ── KPI stat card ───────────────────────────────────────────────────── */
+    .kpi-num { font-size: 2.5rem; font-weight: 800; font-family: var(--mono); letter-spacing: -0.05em; margin-bottom: 0.35rem; }
+    .kpi-sub { font-size: 0.82rem; color: var(--muted); }
 
-        @media (max-width: 768px) {
-            body { padding: 1rem; }
-            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
-            .update-time { align-self: flex-end; }
-            .section-header { flex-direction: column; align-items: flex-start; }
-            .search-input { width: 100%; }
-        }
+    /* ── Section ─────────────────────────────────────────────────────────── */
+    .section { margin-bottom: 2.5rem; }
+    .section-hd {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-bottom: 1rem;
+    }
+    .section-title {
+        font-size: 1.05rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        letter-spacing: -0.02em;
+    }
+    .pill {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        border-radius: 99px;
+        padding: 0.15rem 0.65rem;
+        font-size: 0.72rem;
+        color: var(--muted);
+        font-weight: 600;
+    }
+    .controls {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+        width: 100%;
+    }
+    @media (min-width: 640px) { .controls { width: auto; } }
+
+    .search-box {
+        flex: 1;
+        min-width: 140px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        color: var(--text);
+        font-family: var(--font);
+        font-size: 0.82rem;
+        padding: 0.55rem 0.9rem;
+        outline: none;
+        transition: border-color 0.2s;
+        -webkit-appearance: none;
+    }
+    .search-box::placeholder { color: var(--muted2); }
+    .search-box:focus { border-color: var(--primary); }
+
+    .sel {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        color: var(--muted);
+        font-family: var(--font);
+        font-size: 0.78rem;
+        padding: 0.55rem 0.65rem;
+        cursor: pointer;
+        outline: none;
+        -webkit-appearance: none;
+    }
+    .sel option { background: #0d0d1a; }
+
+    /* ── Repo cards grid ─────────────────────────────────────────────────── */
+    .repo-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    @media (min-width: 480px)  { .repo-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 768px)  { .repo-grid { grid-template-columns: repeat(3, 1fr); } }
+    @media (min-width: 1100px) { .repo-grid { grid-template-columns: repeat(4, 1fr); } }
+
+    .repo-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        padding: 1rem;
+        transition: border-color 0.2s, transform 0.2s;
+        cursor: default;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .repo-card:active { transform: scale(0.97); }
+    @media (hover: hover) { .repo-card:hover { border-color: var(--border-h); } }
+    .rc-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .rc-name { font-size: 0.88rem; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+    .rc-branch { font-size: 0.65rem; color: var(--muted); background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 4px; padding: 0.1rem 0.4rem; white-space: nowrap; flex-shrink: 0; }
+    .badges { display: flex; gap: 0.3rem; flex-wrap: wrap; margin-bottom: 0.5rem; }
+    .badge {
+        font-size: 0.65rem; font-weight: 700; padding: 0.15rem 0.45rem;
+        border-radius: 4px; text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .badge.ok     { background: var(--green-glow); color: var(--green);  border: 1px solid rgba(16,185,129,0.25); }
+    .badge.dirty  { background: var(--cyan-glow);  color: var(--cyan);   border: 1px solid rgba(34,211,238,0.25); }
+    .badge.ahead  { background: var(--yellow-glow);color: var(--yellow); border: 1px solid rgba(245,158,11,0.25); }
+    .badge.behind { background: var(--red-glow);   color: var(--red);    border: 1px solid rgba(239,68,68,0.25); }
+    .badge.local  { background: rgba(255,255,255,0.03); color: var(--muted); border: 1px solid var(--border); }
+    .badge.warn   { background: var(--red-glow);   color: #f87171;       border: 1px solid rgba(239,68,68,0.3); }
+    .rc-meta { font-size: 0.72rem; color: var(--muted2); }
+
+    /* ── Swipeable table wrapper ─────────────────────────────────────────── */
+    .table-shell {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r);
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        position: relative;
+    }
+    /* Fade hint that table scrolls right on mobile */
+    .table-shell::after {
+        content: '';
+        position: absolute;
+        top: 0; right: 0; bottom: 0;
+        width: 40px;
+        background: linear-gradient(to right, transparent, rgba(7,7,15,0.7));
+        pointer-events: none;
+        border-radius: 0 var(--r) var(--r) 0;
+        opacity: 1;
+        transition: opacity 0.3s;
+    }
+    .table-shell.no-fade::after { opacity: 0; }
+    .table-scroll {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+        overscroll-behavior-x: contain;
+    }
+    /* Scrollbar styling */
+    .table-scroll::-webkit-scrollbar { height: 4px; }
+    .table-scroll::-webkit-scrollbar-track { background: transparent; }
+    .table-scroll::-webkit-scrollbar-thumb { background: rgba(139,92,246,0.35); border-radius: 99px; }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; min-width: 620px; }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th {
+        background: rgba(255,255,255,0.015);
+        color: var(--muted);
+        font-size: 0.72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        padding: 0.85rem 1.25rem;
+        white-space: nowrap;
+    }
+    td {
+        padding: 0.9rem 1.25rem;
+        font-size: 0.82rem;
+        border-bottom: 1px solid rgba(255,255,255,0.03);
+        vertical-align: middle;
+    }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: var(--surface-h); }
+    tbody tr:last-child td { border-bottom: none; }
+
+    .fn { font-weight: 600; font-size: 0.82rem; }
+    .fp { font-size: 0.7rem; color: var(--muted); font-family: var(--mono); margin-top: 0.15rem; max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fs { font-family: var(--mono); font-size: 0.8rem; white-space: nowrap; }
+    .fst { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.75rem; font-weight: 600; white-space: nowrap; }
+    .fst.up  { color: var(--green); }
+    .fst.tr  { color: var(--yellow); }
+
+    /* ── Swipe hint chip ─────────────────────────────────────────────────── */
+    .swipe-hint {
+        display: none;
+        align-items: center;
+        gap: 0.3rem;
+        font-size: 0.7rem;
+        color: var(--muted2);
+        margin-bottom: 0.5rem;
+        padding-left: 0.25rem;
+    }
+    @media (max-width: 767px) { .swipe-hint { display: flex; } }
+
+    /* ── Pagination ─────────────────────────────────────────────────────── */
+    .pag {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.35rem;
+        margin-top: 1rem;
+        flex-wrap: wrap;
+        padding: 0 0.25rem;
+    }
+    .pg {
+        min-width: 36px; height: 36px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--r-sm);
+        color: var(--muted);
+        font-size: 0.8rem;
+        font-family: var(--font);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer;
+        transition: all 0.15s;
+        padding: 0 0.6rem;
+        -webkit-tap-highlight-color: transparent;
+        touch-action: manipulation;
+    }
+    .pg:active { transform: scale(0.93); }
+    @media (hover: hover) { .pg:hover:not(:disabled) { background: var(--primary-glow); border-color: var(--primary); color: var(--text); } }
+    .pg.on { background: var(--primary-glow); border-color: var(--primary); color: var(--primary); font-weight: 700; }
+    .pg:disabled { opacity: 0.25; cursor: default; }
+    .pag-info { font-size: 0.75rem; color: var(--muted2); padding: 0 0.25rem; }
+
+    /* ── Empty / loading ─────────────────────────────────────────────────── */
+    .empty { padding: 3rem 1.5rem; text-align: center; color: var(--muted); font-size: 0.88rem; }
+
+    /* ── Bucket inline bar ───────────────────────────────────────────────── */
+    .inline-bucket {
+        font-weight: 600;
+        font-size: 0.75rem;
+        color: var(--text);
+    }
+    .inline-key {
+        font-family: var(--mono);
+        font-size: 0.68rem;
+        color: var(--muted);
+        margin-top: 0.1rem;
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* ── Responsive: bottom safe area on iOS ─────────────────────────────── */
+    @supports (padding-bottom: env(safe-area-inset-bottom)) {
+        .wrapper { padding-bottom: calc(1.5rem + env(safe-area-inset-bottom)); }
+    }
     </style>
 </head>
 <body>
+<div class="blob blob-1"></div>
+<div class="blob blob-2"></div>
+<div class="blob blob-3"></div>
 
+<div class="wrapper">
+
+    <!-- ── Header ──────────────────────────────────────────────────────── -->
     <header>
-        <div>
-            <h1>IDrive e2 Git Cloud Dashboard</h1>
-            <p style="color:var(--text-muted);font-size:0.9rem;margin-top:0.25rem;">Estatus de Git y almacenamiento de archivos grandes</p>
+        <div class="logo-area">
+            <h1>Git S3 Dashboard</h1>
+            <p>Akio Dev · IDrive e2 Storage Monitor</p>
         </div>
-        <div id="last-updated" class="update-time">Actualizando datos...</div>
+        <div id="ts" class="timestamp-pill">Cargando…</div>
     </header>
 
-    <main>
-        <!-- Stats Row -->
-        <div class="stats-grid">
-            <!-- Storage Gauge -->
-            <div id="storage-card" class="card primary">
-                <div class="card-title">Capacidad del Bucket</div>
-                <div class="gauge-container">
-                    <div class="circle-gauge">
-                        <svg viewBox="0 0 100 100">
-                            <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
-                            <circle id="progress-circle" class="circle-progress" cx="50" cy="50" r="45"></circle>
-                        </svg>
-                        <div id="percentage-label" class="gauge-value">0%</div>
-                    </div>
-                    <div class="gauge-info">
-                        <div id="storage-used" class="amount">0.00 MB</div>
-                        <div id="storage-limit" class="limit">Límite mensual: 10.0 GB</div>
-                        <div id="reset-countdown" class="limit" style="margin-top:0.35rem;color:var(--text-muted);font-size:0.8rem;font-weight:500;">Calculando reinicio...</div>
-                    </div>
-                </div>
-                <div id="warning-banner" class="warning-banner"></div>
-            </div>
+    <!-- ── KPI cards ───────────────────────────────────────────────────── -->
+    <div class="kpi-grid">
 
-            <!-- Bucket Info -->
-            <div class="card info">
-                <div class="card-title">Detalles de la Nube (S3)</div>
-                <div id="bucket-name" class="stat-value" style="font-size:1.5rem;line-height:2.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">---</div>
-                <div class="bucket-details" id="bucket-details-area">
-                    <div class="detail-row"><span>Endpoint:</span><span id="endpoint-label" style="font-family:monospace;font-size:0.75rem;">---</span></div>
-                    <div class="detail-row"><span>Región:</span><span id="region-label" style="font-weight:600;">---</span></div>
-                    <div class="detail-row"><span>Total Archivos:</span><span id="total-files-label" style="font-weight:600;">0</span></div>
+        <!-- Storage gauge -->
+        <div id="storage-card" class="card">
+            <div class="card-label">Almacenamiento S3</div>
+            <div class="gauge-row">
+                <div class="gauge-wrap">
+                    <svg viewBox="0 0 80 80">
+                        <circle class="g-bg"   cx="40" cy="40" r="34"/>
+                        <circle id="g-prog" class="g-prog" cx="40" cy="40" r="34"/>
+                    </svg>
+                    <div id="g-pct" class="gauge-pct">0%</div>
+                </div>
+                <div class="gauge-info">
+                    <div id="g-used" class="gauge-used">0 B</div>
+                    <div class="gauge-sub">
+                        <span id="g-limit">Límite: 10 GB</span>
+                    </div>
+                    <div id="g-reset" class="gauge-reset">Calculando…</div>
                 </div>
             </div>
-
-            <!-- Repos Count -->
-            <div class="card success">
-                <div class="card-title">Resumen de Repositorios</div>
-                <div id="repo-stats-total" class="stat-value">0</div>
-                <div class="stat-desc" id="repo-stats-summary">Cargando repositorios...</div>
-            </div>
+            <div id="alert-bar" class="alert-bar"></div>
         </div>
 
-        <!-- ── Repositories Section ── -->
-        <div class="section-wrap">
-            <div class="section-header">
-                <div class="section-title">
-                    Repositorios Locales
-                    <span id="repo-count-badge" class="badge">0</span>
-                </div>
-                <div class="section-controls">
-                    <input id="repo-search" class="search-input" type="text" placeholder="Buscar repositorio...">
-                    <select id="repo-page-size" class="page-size-select">
-                        <option value="12">12 / pág</option>
-                        <option value="24" selected>24 / pág</option>
-                        <option value="48">48 / pág</option>
-                        <option value="9999">Ver todos</option>
-                    </select>
-                </div>
-            </div>
-            <div id="repo-container" class="repo-grid"></div>
-            <div class="pagination" id="repo-pagination"></div>
+        <!-- Buckets detail -->
+        <div class="card cyan">
+            <div class="card-label">Cuentas S3 Activas</div>
+            <div id="acc-list" class="acc-list"></div>
         </div>
 
-        <!-- ── Files Section ── -->
-        <div class="section-wrap">
-            <div class="section-header">
-                <div class="section-title">
-                    Archivos Pesados Aislados
-                    <span id="files-count-badge" class="badge">0</span>
-                </div>
-                <div class="section-controls">
-                    <input id="files-search" class="search-input" type="text" placeholder="Buscar archivo...">
-                    <select id="files-page-size" class="page-size-select">
-                        <option value="10" selected>10 / pág</option>
-                        <option value="25">25 / pág</option>
-                        <option value="50">50 / pág</option>
-                        <option value="9999">Ver todos</option>
-                    </select>
-                </div>
+        <!-- Repos summary -->
+        <div class="card green">
+            <div class="card-label">Repositorios Git</div>
+            <div id="kpi-repos" class="kpi-num">0</div>
+            <div id="kpi-repos-sub" class="kpi-sub">Cargando…</div>
+        </div>
+
+    </div>
+
+    <!-- ── Repositories ─────────────────────────────────────────────────── -->
+    <div class="section">
+        <div class="section-hd">
+            <div class="section-title">
+                Repositorios
+                <span id="rp-badge" class="pill">0</span>
             </div>
-            <div class="table-container">
+            <div class="controls">
+                <input id="rp-srch" class="search-box" type="search" placeholder="🔍  Buscar repositorio…">
+                <select id="rp-ps" class="sel">
+                    <option value="12">12</option>
+                    <option value="24" selected>24</option>
+                    <option value="48">48</option>
+                    <option value="9999">Todos</option>
+                </select>
+            </div>
+        </div>
+        <div id="rp-grid" class="repo-grid"></div>
+        <div id="rp-pag" class="pag"></div>
+    </div>
+
+    <!-- ── Files ────────────────────────────────────────────────────────── -->
+    <div class="section">
+        <div class="section-hd">
+            <div class="section-title">
+                Archivos en S3
+                <span id="fl-badge" class="pill">0</span>
+            </div>
+            <div class="controls">
+                <input id="fl-srch" class="search-box" type="search" placeholder="🔍  Buscar archivo…">
+                <select id="fl-ps" class="sel">
+                    <option value="10" selected>10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="9999">Todos</option>
+                </select>
+            </div>
+        </div>
+        <div class="swipe-hint">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            Desliza horizontalmente para ver más columnas
+        </div>
+        <div id="fl-shell" class="table-shell">
+            <div class="table-scroll" id="fl-scroll">
                 <table>
                     <thead>
                         <tr>
                             <th>Archivo</th>
                             <th>Repositorio</th>
                             <th>Tamaño</th>
-                            <th>Ubicación S3</th>
+                            <th>Bucket / Ruta S3</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
-                    <tbody id="files-table-body"></tbody>
+                    <tbody id="fl-body"></tbody>
                 </table>
             </div>
-            <div class="pagination" id="files-pagination"></div>
         </div>
-    </main>
+        <div id="fl-pag" class="pag"></div>
+    </div>
 
-    <script src="dashboard_data.js"></script>
-    <script>
-    // ── Helpers ──────────────────────────────────────────────────────────────
-    const formatSize = (bytes) => {
-        if (!bytes || bytes === 0) return '0 B';
-        const k = 1024, sizes = ['B','KB','MB','GB','TB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+</div><!-- /wrapper -->
+
+<script src="dashboard_data.js"></script>
+<script>
+/* ── Helpers ────────────────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const fmtSize = b => {
+    if (!b) return '0 B';
+    const u = ['B','KB','MB','GB','TB'], i = Math.min(4, Math.floor(Math.log(b)/Math.log(1024)));
+    return (b/1024**i).toFixed(2)+' '+u[i];
+};
+const resetInfo = day => {
+    const now = new Date();
+    let y=now.getFullYear(), m=now.getMonth();
+    const d = (day>=1&&day<=31)?day:8;
+    let r = new Date(y,m,d);
+    if (now>=r){ m++; if(m>11){m=0;y++;} r=new Date(y,m,d); }
+    return {
+        days: Math.ceil((r-now)/86400000),
+        date: r.toLocaleDateString('es-ES',{day:'numeric',month:'short'})
+    };
+};
+
+/* ── Paginator factory ──────────────────────────────────────────────────── */
+function paginator({ getAll, renderSlice, gridId, pagId, srchId, psId, defaultPS }) {
+    let page=1, search='', ps=defaultPS;
+    const grid = $(gridId), pag = $(pagId);
+    const srch = $(srchId), psel = $(psId);
+
+    const filtered = () => {
+        if (!search) return getAll();
+        const q = search.toLowerCase();
+        return getAll().filter(x => JSON.stringify(x).toLowerCase().includes(q));
     };
 
-    const getNextResetInfo = (resetDay) => {
-        const now = new Date();
-        let year = now.getFullYear(), month = now.getMonth();
-        const rDay = (resetDay >= 1 && resetDay <= 31) ? resetDay : 1;
-        let resetDate = new Date(year, month, rDay);
-        if (now >= resetDate) {
-            month += 1;
-            if (month > 11) { month = 0; year += 1; }
-            resetDate = new Date(year, month, rDay);
-        }
-        const diffDays = Math.ceil((resetDate - now) / (1000 * 60 * 60 * 24));
-        const formatted = resetDate.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
-        return { date: formatted, days: diffDays };
+    const draw = () => {
+        const all = filtered(), total = all.length;
+        const pages = ps>=9999 ? 1 : Math.max(1,Math.ceil(total/ps));
+        if (page>pages) page=pages;
+        const s = ps>=9999 ? 0 : (page-1)*ps;
+        const slice = ps>=9999 ? all : all.slice(s, s+ps);
+        renderSlice(grid, slice, total);
+        drawPag(pag, page, pages, total, ps, s);
     };
 
-    // ── Pagination factory ────────────────────────────────────────────────────
-    function makePaginator({ getItems, pageSize, renderFn, containerId, paginationId, searchId, pageSizeId }) {
-        let currentPage = 1;
-        let currentSearch = '';
-        let currentPageSize = pageSize;
+    const drawPag = (el, p, pages, total, ps, s) => {
+        el.innerHTML = '';
+        if (pages<=1 && total<=ps) return;
+        const shown = Math.min(s+ps, total);
 
-        const container   = document.getElementById(containerId);
-        const paginDiv    = document.getElementById(paginationId);
-        const searchInput = document.getElementById(searchId);
-        const psSelect    = document.getElementById(pageSizeId);
+        const info = document.createElement('span');
+        info.className = 'pag-info';
+        info.textContent = ps>=9999 ? `${total} items` : `${s+1}–${shown} / ${total}`;
+        el.appendChild(info);
 
-        function filtered() {
-            if (!currentSearch) return getItems();
-            const q = currentSearch.toLowerCase();
-            return getItems().filter(item => JSON.stringify(item).toLowerCase().includes(q));
+        const btn = (label, disabled, active, cb) => {
+            const b = document.createElement('button');
+            b.className = 'pg'+(active?' on':'');
+            b.textContent = label;
+            b.disabled = disabled;
+            b.onclick = cb;
+            el.appendChild(b);
+        };
+        btn('←', p<=1, false, ()=>{ page--; draw(); });
+
+        // smart page range
+        const range=[];
+        for(let i=1;i<=pages;i++){
+            if(i===1||i===pages||(i>=p-2&&i<=p+2)) range.push(i);
+            else if(range[range.length-1]!=='…') range.push('…');
         }
-
-        function render() {
-            const items = filtered();
-            const total = items.length;
-            const ps    = currentPageSize;
-            const pages = ps >= 9999 ? 1 : Math.max(1, Math.ceil(total / ps));
-            if (currentPage > pages) currentPage = pages;
-
-            const start = ps >= 9999 ? 0 : (currentPage - 1) * ps;
-            const slice = ps >= 9999 ? items : items.slice(start, start + ps);
-
-            renderFn(container, slice, total);
-            buildPagination(paginDiv, currentPage, pages, total, ps, start);
-        }
-
-        function buildPagination(div, page, pages, total, ps, start) {
-            div.innerHTML = '';
-            if (pages <= 1 && total <= ps) return;
-
-            const shown = Math.min(start + ps, total);
-            const info = document.createElement('span');
-            info.className = 'page-info';
-            info.textContent = ps >= 9999
-                ? `${total} elementos`
-                : `${start + 1}–${shown} de ${total}`;
-            div.appendChild(info);
-
-            const prev = document.createElement('button');
-            prev.className = 'page-btn';
-            prev.textContent = '← Ant';
-            prev.disabled = page <= 1;
-            prev.onclick = () => { currentPage--; render(); };
-            div.appendChild(prev);
-
-            // Page number buttons (show up to 7 around current)
-            const range = [];
-            for (let p = 1; p <= pages; p++) {
-                if (p === 1 || p === pages || (p >= page - 2 && p <= page + 2)) range.push(p);
-                else if (range[range.length - 1] !== '...') range.push('...');
-            }
-            range.forEach(p => {
-                if (p === '...') {
-                    const el = document.createElement('span');
-                    el.className = 'page-info';
-                    el.textContent = '…';
-                    div.appendChild(el);
-                } else {
-                    const btn = document.createElement('button');
-                    btn.className = 'page-btn' + (p === page ? ' active' : '');
-                    btn.textContent = p;
-                    btn.onclick = () => { currentPage = p; render(); };
-                    div.appendChild(btn);
-                }
-            });
-
-            const next = document.createElement('button');
-            next.className = 'page-btn';
-            next.textContent = 'Sig →';
-            next.disabled = page >= pages;
-            next.onclick = () => { currentPage++; render(); };
-            div.appendChild(next);
-        }
-
-        if (searchInput) {
-            searchInput.addEventListener('input', () => {
-                currentSearch = searchInput.value;
-                currentPage = 1;
-                render();
-            });
-        }
-        if (psSelect) {
-            psSelect.addEventListener('change', () => {
-                currentPageSize = parseInt(psSelect.value);
-                currentPage = 1;
-                render();
-            });
-        }
-
-        return { render };
-    }
-
-    // ── Data ─────────────────────────────────────────────────────────────────
-    const defaultData = {
-        last_updated: new Date().toLocaleString(),
-        storage_limit_gb: 10.0, storage_used_bytes: 0,
-        s3_bucket: 'no-bucket-configured', s3_endpoint: '---', region: '---',
-        files_count: 0, repositories: [], s3_files: [], accounts: [],
-        reset_day_of_month: 8
-    };
-    const data = (typeof DASHBOARD_DATA !== 'undefined') ? DASHBOARD_DATA : defaultData;
-
-    // Header
-    document.getElementById('last-updated').textContent = `Actualizado: ${data.last_updated}`;
-
-    // ── Storage card ──────────────────────────────────────────────────────────
-    const limitBytes = data.storage_limit_gb * 1024 * 1024 * 1024;
-    const usedPct    = Math.min((data.storage_used_bytes / limitBytes) * 100, 100).toFixed(1);
-    const circle     = document.getElementById('progress-circle');
-    const circ       = 2 * Math.PI * circle.r.baseVal.value;
-    circle.style.strokeDasharray  = circ;
-    circle.style.strokeDashoffset = circ - (usedPct / 100) * circ;
-    document.getElementById('percentage-label').textContent = `${usedPct}%`;
-    document.getElementById('storage-used').textContent     = formatSize(data.storage_used_bytes);
-    document.getElementById('storage-limit').textContent    = `Límite mensual: ${data.storage_limit_gb.toFixed(1)} GB`;
-
-    // Reset countdown — usa reset_day de la primera cuenta si existe
-    const accounts = data.accounts || [];
-    const primaryResetDay = accounts.length > 0 && accounts[0].reset_day
-        ? accounts[0].reset_day
-        : (data.reset_day_of_month || 8);
-    const resetInfo = getNextResetInfo(primaryResetDay);
-    const dayWord   = resetInfo.days === 1 ? 'día' : 'días';
-    document.getElementById('reset-countdown').textContent =
-        `Reinicio: ${resetInfo.date} (${resetInfo.days} ${dayWord} restantes)`;
-
-    // Warning banner
-    const banner     = document.getElementById('warning-banner');
-    const storageCard= document.getElementById('storage-card');
-    if (usedPct >= 100) {
-        banner.textContent = '¡LÍMITE ALCANZADO! Espera al siguiente ciclo o amplía tu cuenta.';
-        banner.className = 'warning-banner show alert-red';
-        storageCard.className = 'card danger';
-        circle.style.stroke = 'var(--danger)';
-    } else if (usedPct >= 75) {
-        banner.textContent = 'Aviso: Estás cerca de alcanzar el límite mensual.';
-        banner.className = 'warning-banner show alert-yellow';
-        storageCard.className = 'card warning';
-        circle.style.stroke = 'var(--warning)';
-    } else {
-        storageCard.className = 'card primary';
-        circle.style.stroke = 'var(--primary)';
-    }
-
-    // ── Bucket info card ──────────────────────────────────────────────────────
-    if (accounts.length > 1) {
-        document.getElementById('bucket-name').textContent = 'Multi-cuenta Consolidado';
-        let html = `<div style="margin-top:0.75rem;max-height:150px;overflow-y:auto;display:flex;flex-direction:column;gap:0.4rem;">`;
-        accounts.forEach(acc => {
-            const pct = acc.limit_gb > 0
-                ? Math.min((acc.used_bytes / (acc.limit_gb * 1024 * 1024 * 1024)) * 100, 100).toFixed(1)
-                : '0.0';
-            const resetD = acc.reset_day ? getNextResetInfo(acc.reset_day) : getNextResetInfo(primaryResetDay);
-            const col = pct >= 100 ? 'var(--danger)' : pct >= 75 ? 'var(--warning)' : 'var(--success)';
-            html += `
-            <div style="border-bottom:1px solid rgba(255,255,255,0.05);padding:0.4rem 0;">
-                <div style="display:flex;justify-content:space-between;font-weight:600;font-size:0.8rem;">
-                    <span>${acc.name}</span>
-                    <span style="color:${col}">${pct}%</span>
-                </div>
-                <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted);margin-top:0.15rem;">
-                    <span style="font-family:monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px;" title="${acc.bucket}">${acc.bucket}</span>
-                    <span>${formatSize(acc.used_bytes)} / ${acc.limit_gb.toFixed(0)}GB</span>
-                </div>
-                <div style="font-size:0.7rem;color:var(--text-muted);margin-top:0.1rem;">
-                    Reinicio: ${resetD.date} (${resetD.days}d)
-                </div>
-            </div>`;
+        range.forEach(i=>{
+            if(i==='…'){ const s=document.createElement('span'); s.className='pag-info'; s.textContent='…'; el.appendChild(s); }
+            else btn(i, false, i===p, ()=>{ page=i; draw(); });
         });
-        html += `</div>`;
-        document.getElementById('bucket-details-area').outerHTML = html;
-    } else {
-        document.getElementById('bucket-name').textContent = data.s3_bucket;
-        document.getElementById('endpoint-label').textContent  = data.s3_endpoint;
-        document.getElementById('region-label').textContent    = data.region || 'us-west-2';
-        document.getElementById('total-files-label').textContent = data.files_count;
-    }
+        btn('→', p>=pages, false, ()=>{ page++; draw(); });
+    };
 
-    // ── Repos ─────────────────────────────────────────────────────────────────
-    const repos = data.repositories || [];
-    document.getElementById('repo-stats-total').textContent = repos.length;
-    document.getElementById('repo-count-badge').textContent = repos.length;
+    if (srch) srch.addEventListener('input', ()=>{ search=srch.value; page=1; draw(); });
+    if (psel) psel.addEventListener('change', ()=>{ ps=parseInt(psel.value); page=1; draw(); });
 
-    let dirtyCount = 0, outSyncCount = 0, dubiousCount = 0;
-    repos.forEach(r => {
-        if (r.status === 'dirty') dirtyCount++;
-        if (r.remote_status && r.remote_status !== 'synced' && r.remote_status !== 'no_remote') outSyncCount++;
-        if (r.is_dubious) dubiousCount++;
+    draw();
+    return { redraw: draw };
+}
+
+/* ── Data ───────────────────────────────────────────────────────────────── */
+const D = typeof DASHBOARD_DATA!=='undefined' ? DASHBOARD_DATA : {
+    last_updated: new Date().toLocaleString(),
+    storage_limit_gb: 30, storage_used_bytes: 0,
+    s3_bucket:'---', s3_endpoint:'---', region:'us-west-2',
+    files_count:0, repositories:[], s3_files:[], accounts:[],
+    reset_day_of_month: 8
+};
+
+/* ── Timestamp ──────────────────────────────────────────────────────────── */
+$('ts').textContent = `Actualizado: ${D.last_updated}`;
+
+/* ── Storage gauge ──────────────────────────────────────────────────────── */
+const limitB = D.storage_limit_gb * 1024**3;
+const pct    = Math.min((D.storage_used_bytes / limitB)*100, 100);
+const circ   = 2*Math.PI*34; // r=34
+const prog   = $('g-prog');
+prog.style.strokeDasharray  = circ;
+prog.style.strokeDashoffset = circ - (pct/100)*circ;
+$('g-pct').textContent  = pct.toFixed(1)+'%';
+$('g-used').textContent = fmtSize(D.storage_used_bytes);
+$('g-limit').textContent = `Límite: ${D.storage_limit_gb.toFixed(0)} GB total`;
+
+const accs = D.accounts || [];
+const primReset = accs.length && accs[0].reset_day ? accs[0].reset_day : (D.reset_day_of_month||8);
+const ri = resetInfo(primReset);
+$('g-reset').textContent = `Reinicio: ${ri.date} (${ri.days}d restantes)`;
+
+const sc = $('storage-card');
+const ab = $('alert-bar');
+if (pct>=100)      { sc.classList.add('red');  ab.className='alert-bar show red';    ab.textContent='⚠ LÍMITE ALCANZADO — Activa la siguiente cuenta.'; prog.style.stroke='var(--red)'; }
+else if (pct>=75)  { sc.classList.add('warn'); ab.className='alert-bar show yellow'; ab.textContent='⚠ Estás cerca del límite mensual.'; prog.style.stroke='var(--yellow)'; }
+else               { prog.style.stroke='var(--primary)'; }
+
+/* ── Accounts list ──────────────────────────────────────────────────────── */
+const accEl = $('acc-list');
+if (accs.length === 0) {
+    accEl.innerHTML = `<div class="empty" style="padding:1rem 0">Sin cuentas configuradas.</div>`;
+} else {
+    accs.forEach(a => {
+        const p = a.limit_gb>0 ? Math.min((a.used_bytes/(a.limit_gb*1024**3))*100,100) : 0;
+        const col = p>=100?'var(--red)':p>=75?'var(--yellow)':'var(--green)';
+        const rd = a.reset_day ? resetInfo(a.reset_day) : ri;
+        const row = document.createElement('div');
+        row.className = 'acc-row';
+        row.innerHTML = `
+          <div>
+            <div class="acc-name">${a.name}</div>
+            <div class="acc-bucket">${a.bucket}</div>
+            <div class="acc-reset">Reinicio: ${rd.date} · ${rd.days}d · ${fmtSize(a.used_bytes)} / ${a.limit_gb.toFixed(0)} GB</div>
+          </div>
+          <div style="font-size:0.82rem;font-weight:700;color:${col};font-family:var(--mono)">${p.toFixed(1)}%</div>
+          <div class="acc-bar-wrap" style="grid-column:1/-1">
+            <div class="acc-bar-fill" style="width:${p.toFixed(1)}%;background:${col}"></div>
+          </div>`;
+        accEl.appendChild(row);
     });
-    let summaryText = 'Todos los repositorios sincronizados y limpios.';
-    if (dirtyCount > 0 || outSyncCount > 0 || dubiousCount > 0) {
-        const issues = [];
-        if (dirtyCount > 0)   issues.push(`${dirtyCount} sucios`);
-        if (outSyncCount > 0) issues.push(`${outSyncCount} desincronizados`);
-        if (dubiousCount > 0) issues.push(`${dubiousCount} sin permisos`);
-        summaryText = `Requieren atención: ${issues.join(', ')}.`;
+}
+
+/* ── Repo KPI ───────────────────────────────────────────────────────────── */
+const repos = D.repositories || [];
+$('kpi-repos').textContent = repos.length;
+$('rp-badge').textContent  = repos.length;
+let dirty=0, out=0, dub=0;
+repos.forEach(r=>{ if(r.status==='dirty')dirty++; if(r.remote_status&&r.remote_status!=='synced'&&r.remote_status!=='no_remote')out++; if(r.is_dubious)dub++; });
+$('kpi-repos-sub').textContent = (dirty+out+dub)===0
+    ? '✓ Todos sincronizados y limpios'
+    : `⚠ ${[dirty&&`${dirty} sucios`,out&&`${out} desincronizados`,dub&&`${dub} sin permisos`].filter(Boolean).join(' · ')}`;
+
+/* ── Repo cards ─────────────────────────────────────────────────────────── */
+const buildCard = r => {
+    const b=[];
+    if(r.is_dubious){ b.push(`<span class="badge warn">Sin permisos</span>`); }
+    else {
+        if(r.status==='dirty') b.push(`<span class="badge dirty">Modificado</span>`);
+        const rs=r.remote_status;
+        if(rs==='synced')  b.push(`<span class="badge ok">${r.status==='clean'?'Al día':'Sync'}</span>`);
+        else if(rs==='ahead')  b.push(`<span class="badge ahead">↑ ${r.ahead_count}</span>`);
+        else if(rs==='behind') b.push(`<span class="badge behind">↓ ${r.behind_count}</span>`);
+        else if(rs==='diverged')b.push(`<span class="badge behind">Diverged</span>`);
+        else if(rs==='no_remote'||rs==='no_upstream') b.push(`<span class="badge local">Local</span>`);
     }
-    document.getElementById('repo-stats-summary').textContent = summaryText;
+    const meta = r.error
+        ? `<div class="rc-meta" style="color:var(--red)">Error: ${r.error}</div>`
+        : `<div class="rc-meta">${r.status==='dirty'?r.uncommitted_changes_count+' cambios sin confirmar':'Sin cambios pendientes'}</div>`;
+    const c = document.createElement('div');
+    c.className = 'repo-card';
+    c.innerHTML = `<div class="rc-head"><span class="rc-name" title="${r.name}">${r.name}</span><span class="rc-branch">${r.branch}</span></div><div class="badges">${b.join('')}</div>${meta}`;
+    return c;
+};
 
-    function buildRepoCard(repo) {
-        const badges = [];
-        if (repo.is_dubious) {
-            badges.push(`<span class="status-badge dubious">Sin permisos</span>`);
-        } else {
-            if (repo.status === 'dirty')
-                badges.push(`<span class="status-badge dirty">Modificaciones</span>`);
-            const rem = repo.remote_status;
-            if      (rem === 'synced')   badges.push(`<span class="status-badge clean-synced">${repo.status === 'clean' ? 'Al día' : 'Sincronizado'}</span>`);
-            else if (rem === 'ahead')    badges.push(`<span class="status-badge ahead">Ahead (+${repo.ahead_count})</span>`);
-            else if (rem === 'behind')   badges.push(`<span class="status-badge behind">Behind (-${repo.behind_count})</span>`);
-            else if (rem === 'diverged') badges.push(`<span class="status-badge behind">Diverged</span>`);
-            else if (rem === 'no_remote' || rem === 'no_upstream') badges.push(`<span class="status-badge local">Solo Local</span>`);
-        }
-        const details = repo.error
-            ? `<div class="repo-meta" style="color:var(--danger);font-weight:600;">Error: ${repo.error}</div>`
-            : `<div class="repo-meta">${repo.status === 'dirty' ? repo.uncommitted_changes_count + ' archivos sin confirmar.' : 'Sin cambios pendientes.'}</div>`;
-        return `
-            <div class="repo-header">
-                <span class="repo-name" title="${repo.name}">${repo.name}</span>
-                <span class="repo-branch">${repo.branch}</span>
-            </div>
-            <div class="repo-badges">${badges.join('')}</div>
-            ${details}`;
-    }
-
-    const repoPaginator = makePaginator({
-        getItems:     () => repos,
-        pageSize:     24,
-        containerId:  'repo-container',
-        paginationId: 'repo-pagination',
-        searchId:     'repo-search',
-        pageSizeId:   'repo-page-size',
-        renderFn: (container, slice, total) => {
-            if (slice.length === 0) {
-                container.innerHTML = `<div class="card" style="grid-column:1/-1;text-align:center;color:var(--text-muted);">
-                    ${total === 0 ? 'No se detectaron repositorios.' : 'Sin resultados para tu búsqueda.'}</div>`;
-                return;
-            }
-            container.innerHTML = '';
-            slice.forEach(repo => {
-                const card = document.createElement('div');
-                card.className = 'repo-card';
-                card.innerHTML = buildRepoCard(repo);
-                container.appendChild(card);
-            });
-        }
-    });
-    repoPaginator.render();
-
-    // ── Files table ───────────────────────────────────────────────────────────
-    const files = data.s3_files || [];
-    document.getElementById('files-count-badge').textContent = files.length;
-
-    function buildFileRows(tbody, slice, total) {
-        if (slice.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="5" class="empty-state">${total === 0
-                ? 'No se han registrado archivos en S3.'
-                : 'Sin resultados para tu búsqueda.'}</td></tr>`;
+paginator({
+    getAll: ()=>repos,
+    gridId:'rp-grid', pagId:'rp-pag', srchId:'rp-srch', psId:'rp-ps',
+    defaultPS: 24,
+    renderSlice: (grid, slice, total) => {
+        grid.innerHTML='';
+        if(!slice.length){
+            grid.innerHTML=`<div class="card" style="grid-column:1/-1"><div class="empty">${total===0?'No hay repositorios.':'Sin resultados.'}</div></div>`;
             return;
         }
-        tbody.innerHTML = '';
-        slice.forEach(file => {
-            const statusHtml = file.uploaded
-                ? `<span class="file-status uploaded">✔ Subido a S3</span>`
-                : `<span class="file-status transit">⏳ En Tránsito</span>`;
-            const baseName = file.rel_path.split(/[/\\]/).pop();
+        slice.forEach(r=>grid.appendChild(buildCard(r)));
+    }
+});
+
+/* ── Files table ────────────────────────────────────────────────────────── */
+const files = D.s3_files || [];
+$('fl-badge').textContent = files.length;
+
+// Swipe fade hint
+const scroll = $('fl-scroll');
+const shell  = $('fl-shell');
+scroll.addEventListener('scroll', ()=>{
+    const atEnd = scroll.scrollLeft + scroll.clientWidth >= scroll.scrollWidth - 5;
+    shell.classList.toggle('no-fade', atEnd);
+});
+
+paginator({
+    getAll: ()=>files,
+    gridId:'fl-body', pagId:'fl-pag', srchId:'fl-srch', psId:'fl-ps',
+    defaultPS: 10,
+    renderSlice: (tbody, slice, total) => {
+        tbody.innerHTML='';
+        if(!slice.length){
+            tbody.innerHTML=`<tr><td colspan="5" class="empty">${total===0?'No hay archivos en S3.':'Sin resultados.'}</td></tr>`;
+            return;
+        }
+        slice.forEach(f=>{
+            const base = f.rel_path.split(/[/\\]/).pop();
+            const st   = f.uploaded
+                ? `<span class="fst up">✔ Subido</span>`
+                : `<span class="fst tr">⏳ Tránsito</span>`;
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>
-                    <div class="file-name" title="${file.rel_path}">${baseName}</div>
-                    <div class="file-path">${file.rel_path}</div>
-                </td>
-                <td style="font-weight:600;">${file.repo}</td>
-                <td class="file-size">${formatSize(file.size)}</td>
-                <td>
-                    <div style="font-weight:600;font-size:0.75rem;">${file.s3_bucket}</div>
-                    <div style="font-family:monospace;font-size:0.7rem;color:var(--text-muted);margin-top:0.15rem;" title="${file.s3_key}">${file.s3_key}</div>
-                </td>
-                <td>${statusHtml}</td>`;
+            tr.innerHTML=`
+              <td><div class="fn" title="${f.rel_path}">${base}</div><div class="fp">${f.rel_path}</div></td>
+              <td style="font-weight:600;white-space:nowrap">${f.repo}</td>
+              <td class="fs">${fmtSize(f.size)}</td>
+              <td><div class="inline-bucket">${f.s3_bucket}</div><div class="inline-key" title="${f.s3_key}">${f.s3_key}</div></td>
+              <td>${st}</td>`;
             tbody.appendChild(tr);
         });
     }
-
-    const filesPaginator = makePaginator({
-        getItems:     () => files,
-        pageSize:     10,
-        containerId:  'files-table-body',
-        paginationId: 'files-pagination',
-        searchId:     'files-search',
-        pageSizeId:   'files-page-size',
-        renderFn:     buildFileRows
-    });
-    filesPaginator.render();
-    </script>
+});
+</script>
 </body>
 </html>
