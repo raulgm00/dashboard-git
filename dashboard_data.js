@@ -1,7 +1,7 @@
-// Generado automáticamente - 2026-06-08 23:54:16
+// Generado automáticamente - 2026-06-09 00:09:29
 const DASHBOARD_DATA = {
-    "last_updated": "08/06/2026 23:54:16",
-    "storage_limit_gb": 20.0,
+    "last_updated": "09/06/2026 00:09:29",
+    "storage_limit_gb": 30.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "Multi-cuenta consolidado",
     "s3_endpoint": "Multi-endpoint",
@@ -2298,6 +2298,13 @@ const DASHBOARD_DATA = {
         {
             "name": "idrive-cuenta-2",
             "bucket": "mis-archivos-grandes-git-2",
+            "endpoint": "s3.us-west-2.idrivee2.com",
+            "used_bytes": 0,
+            "limit_gb": 10.0
+        },
+        {
+            "name": "idrive-cuenta-3",
+            "bucket": "mis-archivos-grandes-git-3",
             "endpoint": "s3.us-west-2.idrivee2.com",
             "used_bytes": 0,
             "limit_gb": 10.0
