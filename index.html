@@ -470,6 +470,7 @@
                     <div class="gauge-info">
                         <div id="storage-used" class="amount">0.00 MB</div>
                         <div id="storage-limit" class="limit">Límite mensual: 10.0 GB</div>
+                        <div id="reset-countdown" class="limit" style="margin-top: 0.35rem; color: var(--text-muted); font-size: 0.8rem; font-weight: 500;">Calculando reinicio...</div>
                     </div>
                 </div>
                 <div id="warning-banner" class="warning-banner"></div>
@@ -524,7 +525,7 @@
                         <th>Archivo</th>
                         <th>Origen (Repositorio)</th>
                         <th>Tamaño</th>
-                        <th>Destino S3 Key</th>
+                        <th>Ubicación S3 (Bucket / Key)</th>
                         <th>Estado</th>
                     </tr>
                 </thead>
@@ -541,6 +542,14 @@
     <!-- Import data -->
     <script src="dashboard_data.js"></script>
     <script>
+        const formatSize = (bytes) => {
+            if (bytes === 0) return '0.00 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+
         // Fallback data in case js file fails or is empty
         const defaultData = {
             last_updated: new Date().toLocaleString(),
@@ -560,11 +569,39 @@
         document.getElementById('last-updated').textContent = `Actualizado: ${data.last_updated}`;
 
         // Populate S3 Info Card
-        document.getElementById('bucket-name').textContent = data.s3_bucket;
-        document.getElementById('bucket-name').title = data.s3_bucket;
-        document.getElementById('endpoint-label').textContent = data.s3_endpoint;
-        document.getElementById('region-label').textContent = data.region || 'us-west-2';
-        document.getElementById('total-files-label').textContent = data.files_count;
+        const accounts = data.accounts || [];
+        if (accounts.length > 1) {
+            document.getElementById('bucket-name').textContent = "Multi-cuenta Consolidado";
+            let detailsHtml = `
+                <div class="bucket-details" style="margin-top: 0.75rem; max-height: 120px; overflow-y: auto; display: flex; flex-direction: column; gap: 0.4rem;">
+            `;
+            accounts.forEach(acc => {
+                const limitBytesAcc = acc.limit_gb * 1024 * 1024 * 1024;
+                const pct = Math.min((acc.used_bytes / limitBytesAcc) * 100, 100).toFixed(1);
+                detailsHtml += `
+                    <div class="detail-row" style="flex-direction: column; align-items: flex-start; gap: 0.2rem; border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding: 0.4rem 0;">
+                        <div style="display: flex; justify-content: space-between; width: 100%; font-weight: 600; font-size: 0.8rem;">
+                            <span>${acc.name}</span>
+                            <span style="color: ${pct >= 100 ? 'var(--danger)' : pct >= 75 ? 'var(--warning)' : 'var(--success)'};">${pct}%</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.75rem; color: var(--text-muted);">
+                            <span style="font-family: monospace; font-size: 0.7rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px;" title="${acc.bucket}">${acc.bucket}</span>
+                            <span>${formatSize(acc.used_bytes)} / ${acc.limit_gb.toFixed(0)}GB</span>
+                        </div>
+                    </div>
+                `;
+            });
+            detailsHtml += `
+                </div>
+            `;
+            document.querySelector('.card.info .bucket-details').outerHTML = detailsHtml;
+        } else {
+            document.getElementById('bucket-name').textContent = data.s3_bucket;
+            document.getElementById('bucket-name').title = data.s3_bucket;
+            document.getElementById('endpoint-label').textContent = data.s3_endpoint;
+            document.getElementById('region-label').textContent = data.region || 'us-west-2';
+            document.getElementById('total-files-label').textContent = data.files_count;
+        }
 
         // Calculate and Populate Storage Card
         const limitBytes = data.storage_limit_gb * 1024 * 1024 * 1024;
@@ -581,16 +618,42 @@
         // Set values
         document.getElementById('percentage-label').textContent = `${usedPercentage}%`;
         
-        const formatSize = (bytes) => {
-            if (bytes === 0) return '0.00 B';
-            const k = 1024;
-            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-        };
-        
         document.getElementById('storage-used').textContent = formatSize(usedBytes);
         document.getElementById('storage-limit').textContent = `Límite mensual: ${data.storage_limit_gb.toFixed(1)} GB`;
+        
+        // Calculate countdown to next reset date
+        const getNextResetInfo = (resetDay) => {
+            const now = new Date();
+            let year = now.getFullYear();
+            let month = now.getMonth();
+            
+            const rDay = (resetDay >= 1 && resetDay <= 31) ? resetDay : 1;
+            let resetDate = new Date(year, month, rDay);
+            
+            if (now >= resetDate) {
+                month += 1;
+                if (month > 11) {
+                    month = 0;
+                    year += 1;
+                }
+                resetDate = new Date(year, month, rDay);
+            }
+            
+            const diffTime = resetDate - now;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            const options = { day: 'numeric', month: 'long' };
+            const formattedDate = resetDate.toLocaleDateString('es-ES', options);
+            
+            return {
+                date: formattedDate,
+                days: diffDays
+            };
+        };
+        
+        const resetInfo = getNextResetInfo(data.reset_day_of_month || 1);
+        const dayWord = resetInfo.days === 1 ? 'día' : 'días';
+        document.getElementById('reset-countdown').textContent = `Reinicio: ${resetInfo.date} (${resetInfo.days} ${dayWord} restantes)`;
 
         // Warning banner logic
         const banner = document.getElementById('warning-banner');
