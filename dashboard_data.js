@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-09 00:34:53
+// Generado automáticamente - 2026-06-09 00:38:06
 const DASHBOARD_DATA = {
-    "last_updated": "09/06/2026 00:34:53",
+    "last_updated": "09/06/2026 00:38:06",
     "storage_limit_gb": 30.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "Multi-cuenta consolidado",
@@ -209,11 +209,11 @@ const DASHBOARD_DATA = {
         {
             "name": "dashboard-git",
             "branch": "main",
-            "status": "dirty",
+            "status": "clean",
             "remote_status": "synced",
             "ahead_count": 0,
             "behind_count": 0,
-            "uncommitted_changes_count": 1,
+            "uncommitted_changes_count": 0,
             "is_dubious": false,
             "error": null
         },
