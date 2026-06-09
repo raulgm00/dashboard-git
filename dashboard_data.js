@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-08 23:14:40
+// Generado automáticamente - 2026-06-08 23:16:02
 const DASHBOARD_DATA = {
-    "last_updated": "08/06/2026 23:14:40",
+    "last_updated": "08/06/2026 23:16:02",
     "storage_limit_gb": 10.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "mis-archivos-grandes-git",
