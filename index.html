@@ -792,7 +792,10 @@
                     </td>
                     <td style="font-weight: 600;">${file.repo}</td>
                     <td class="file-size">${formatSize(file.size)}</td>
-                    <td style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted);" title="${file.s3_key}">${file.s3_key}</td>
+                    <td>
+                        <div style="font-weight: 600; font-size: 0.75rem; color: var(--text-main);">${file.s3_bucket}</div>
+                        <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem;" title="${file.s3_key}">${file.s3_key}</div>
+                    </td>
                     <td>${statusHtml}</td>
                 `;
                 tableBody.appendChild(tr);
