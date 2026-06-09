@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-09 00:09:29
+// Generado automáticamente - 2026-06-09 00:24:01
 const DASHBOARD_DATA = {
-    "last_updated": "09/06/2026 00:09:29",
+    "last_updated": "09/06/2026 00:24:01",
     "storage_limit_gb": 30.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "Multi-cuenta consolidado",
@@ -550,11 +550,11 @@ const DASHBOARD_DATA = {
         {
             "name": "propuestas-wesoft",
             "branch": "main",
-            "status": "dirty",
+            "status": "clean",
             "remote_status": "synced",
             "ahead_count": 0,
             "behind_count": 0,
-            "uncommitted_changes_count": 1,
+            "uncommitted_changes_count": 0,
             "is_dubious": false,
             "error": null
         },
