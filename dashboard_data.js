@@ -1,6 +1,6 @@
-// Generado automáticamente - 2026-06-08 23:48:02
+// Generado automáticamente - 2026-06-08 23:53:33
 const DASHBOARD_DATA = {
-    "last_updated": "08/06/2026 23:48:02",
+    "last_updated": "08/06/2026 23:53:33",
     "storage_limit_gb": 10.0,
     "storage_used_bytes": 11465934168,
     "s3_bucket": "mis-archivos-grandes-git",
@@ -2289,7 +2289,7 @@ const DASHBOARD_DATA = {
     "reset_day_of_month": 1,
     "accounts": [
         {
-            "name": "idrive-cuenta-1",
+            "name": "parámetros-consola",
             "bucket": "mis-archivos-grandes-git",
             "endpoint": "s3.us-west-2.idrivee2.com",
             "used_bytes": 11465934168,
