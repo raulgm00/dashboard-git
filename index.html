@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Storage & S3 Dashboard</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0b14;
+            --card-bg: rgba(22, 22, 38, 0.7);
+            --card-border: rgba(255, 255, 255, 0.06);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --primary: #8b5cf6;
+            --primary-glow: rgba(139, 92, 246, 0.15);
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.1);
+            --warning: #f59e0b;
+            --warning-glow: rgba(245, 158, 11, 0.1);
+            --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.1);
+            --info: #06b6d4;
+            --info-glow: rgba(6, 182, 212, 0.1);
+            --card-radius: 16px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            padding: 2rem;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(139, 92, 246, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2.5rem;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .update-time {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.03);
+            padding: 0.5rem 1rem;
+            border-radius: 50px;
+            border: 1px solid var(--card-border);
+        }
+
+        /* Grid Layout */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2.5rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--card-radius);
+            padding: 1.75rem;
+            backdrop-filter: blur(12px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: transparent;
+        }
+
+        .card.primary::before { background: var(--primary); }
+        .card.success::before { background: var(--success); }
+        .card.warning::before { background: var(--warning); }
+        .card.danger::before { background: var(--danger); }
+
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Storage Gauge */
+        .gauge-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .circle-gauge {
+            width: 100px;
+            height: 100px;
+            position: relative;
+        }
+
+        .circle-gauge svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        .circle-bg {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.04);
+            stroke-width: 8;
+        }
+
+        .circle-progress {
+            fill: none;
+            stroke: var(--primary);
+            stroke-width: 8;
+            stroke-linecap: round;
+            stroke-dasharray: 283; /* 2 * PI * r (r=45) */
+            stroke-dashoffset: 283;
+            transition: stroke-dashoffset 1s ease-in-out;
+        }
+
+        .gauge-value {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .gauge-info {
+            flex-grow: 1;
+        }
+
+        .gauge-info .amount {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .gauge-info .limit {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .warning-banner {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: none;
+        }
+
+        .warning-banner.show {
+            display: block;
+        }
+
+        .warning-banner.alert-yellow {
+            background: var(--warning-glow);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .warning-banner.alert-red {
+            background: var(--danger-glow);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        /* Generic Stat layout */
+        .stat-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .bucket-details {
+            margin-top: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-row span:first-child {
+            color: var(--text-muted);
+        }
+
+        /* Repository Section */
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .section-title span.badge {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.2rem 0.6rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .repo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.25rem;
+            margin-bottom: 3rem;
+        }
+
+        .repo-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+
+        .repo-card:hover {
+            transform: translateY(-2px);
+            border-color: rgba(139, 92, 246, 0.25);
+        }
+
+        .repo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.75rem;
+        }
+
+        .repo-name {
+            font-weight: 700;
+            font-size: 1.05rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+        }
+
+        .repo-branch {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.04);
+            padding: 0.15rem 0.45rem;
+            border-radius: 4px;
+            border: 1px solid var(--card-border);
+        }
+
+        .repo-badges {
+            display: flex;
+            gap: 0.4rem;
+            flex-wrap: wrap;
+            margin-top: 0.5rem;
+        }
+
+        .status-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            text-transform: uppercase;
+        }
+
+        .status-badge.clean-synced {
+            background: var(--success-glow);
+            color: var(--success);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .status-badge.dirty {
+            background: var(--info-glow);
+            color: var(--info);
+            border: 1px solid rgba(6, 182, 212, 0.2);
+        }
+
+        .status-badge.ahead {
+            background: var(--warning-glow);
+            color: var(--warning);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .status-badge.behind {
+            background: var(--danger-glow);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .status-badge.local {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-muted);
+            border: 1px solid var(--card-border);
+        }
+
+        .status-badge.dubious {
+            background: var(--danger-glow);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .repo-meta {
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Files Section */
+        .table-container {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: var(--card-radius);
+            overflow: hidden;
+            backdrop-filter: blur(12px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.02);
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        td {
+            padding: 1rem 1.5rem;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .file-name {
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .file-path {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-family: monospace;
+            margin-top: 0.2rem;
+        }
+
+        .file-size {
+            font-family: monospace;
+        }
+
+        .file-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .file-status.uploaded {
+            color: var(--success);
+        }
+
+        .file-status.transit {
+            color: var(--warning);
+        }
+
+        .empty-state {
+            padding: 3rem;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* Responsiveness */
+        @media (max-width: 768px) {
+            body { padding: 1rem; }
+            header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+            .update-time { align-self: flex-end; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>IDrive e2 Git Cloud Dashboard</h1>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">Estatus de Git y almacenamiento de archivos grandes</p>
+        </div>
+        <div id="last-updated" class="update-time">Actualizando datos...</div>
+    </header>
+
+    <main>
+        <!-- Stats Row -->
+        <div class="stats-grid">
+            <!-- Storage Usage Card -->
+            <div id="storage-card" class="card primary">
+                <div class="card-title">Capacidad del Bucket</div>
+                <div class="gauge-container">
+                    <div class="circle-gauge">
+                        <svg viewBox="0 0 100 100">
+                            <circle class="circle-bg" cx="50" cy="50" r="45"></circle>
+                            <circle id="progress-circle" class="circle-progress" cx="50" cy="50" r="45"></circle>
+                        </svg>
+                        <div id="percentage-label" class="gauge-value">0%</div>
+                    </div>
+                    <div class="gauge-info">
+                        <div id="storage-used" class="amount">0.00 MB</div>
+                        <div id="storage-limit" class="limit">Límite mensual: 10.0 GB</div>
+                    </div>
+                </div>
+                <div id="warning-banner" class="warning-banner"></div>
+            </div>
+
+            <!-- Bucket Info Card -->
+            <div class="card info">
+                <div class="card-title">Detalles de la Nube (S3)</div>
+                <div id="bucket-name" class="stat-value" style="font-size: 1.5rem; line-height: 2.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">---</div>
+                <div class="bucket-details">
+                    <div class="detail-row">
+                        <span>Endpoint:</span>
+                        <span id="endpoint-label" style="font-family: monospace; font-size: 0.75rem;">---</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Región:</span>
+                        <span id="region-label" style="font-weight: 600;">---</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Total Archivos:</span>
+                        <span id="total-files-label" style="font-weight: 600;">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Repositories Count Card -->
+            <div class="card success">
+                <div class="card-title">Resumen de Repositorios</div>
+                <div id="repo-stats-total" class="stat-value">0</div>
+                <div class="stat-desc" id="repo-stats-summary">Cargando repositorios...</div>
+            </div>
+        </div>
+
+        <!-- Git Repositories -->
+        <div class="section-title">
+            Repositorios Locales
+            <span id="repo-count-badge" class="badge">0</span>
+        </div>
+        <div id="repo-container" class="repo-grid">
+            <!-- Dynamic Inject -->
+        </div>
+
+        <!-- Files Section -->
+        <div class="section-title">
+            Archivos Pesados Aislados
+            <span id="files-count-badge" class="badge">0</span>
+        </div>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Origen (Repositorio)</th>
+                        <th>Tamaño</th>
+                        <th>Destino S3 Key</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="files-table-body">
+                    <!-- Dynamic Inject -->
+                    <tr>
+                        <td colspan="5" class="empty-state">No se han registrado archivos en tránsito.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Import data -->
+    <script src="dashboard_data.js"></script>
+    <script>
+        // Fallback data in case js file fails or is empty
+        const defaultData = {
+            last_updated: new Date().toLocaleString(),
+            storage_limit_gb: 10.0,
+            storage_used_bytes: 0,
+            s3_bucket: "no-bucket-configured",
+            s3_endpoint: "---",
+            region: "---",
+            files_count: 0,
+            repositories: [],
+            s3_files: []
+        };
+
+        const data = (typeof DASHBOARD_DATA !== 'undefined') ? DASHBOARD_DATA : defaultData;
+
+        // Populate header
+        document.getElementById('last-updated').textContent = `Actualizado: ${data.last_updated}`;
+
+        // Populate S3 Info Card
+        document.getElementById('bucket-name').textContent = data.s3_bucket;
+        document.getElementById('bucket-name').title = data.s3_bucket;
+        document.getElementById('endpoint-label').textContent = data.s3_endpoint;
+        document.getElementById('region-label').textContent = data.region || 'us-west-2';
+        document.getElementById('total-files-label').textContent = data.files_count;
+
+        // Calculate and Populate Storage Card
+        const limitBytes = data.storage_limit_gb * 1024 * 1024 * 1024;
+        const usedBytes = data.storage_used_bytes;
+        const usedPercentage = Math.min((usedBytes / limitBytes) * 100, 100).toFixed(1);
+        
+        // Circular gauge dashoffset update
+        const circle = document.getElementById('progress-circle');
+        const radius = circle.r.baseVal.value;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (usedPercentage / 100) * circumference;
+        circle.style.strokeDashoffset = offset;
+        
+        // Set values
+        document.getElementById('percentage-label').textContent = `${usedPercentage}%`;
+        
+        const formatSize = (bytes) => {
+            if (bytes === 0) return '0.00 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        };
+        
+        document.getElementById('storage-used').textContent = formatSize(usedBytes);
+        document.getElementById('storage-limit').textContent = `Límite mensual: ${data.storage_limit_gb.toFixed(1)} GB`;
+
+        // Warning banner logic
+        const banner = document.getElementById('warning-banner');
+        const storageCard = document.getElementById('storage-card');
+        if (usedPercentage >= 100) {
+            banner.textContent = '¡LÍMITE ALCANZADO! Espera al siguiente mes o amplía tu cuenta.';
+            banner.className = 'warning-banner show alert-red';
+            storageCard.className = 'card danger';
+            circle.style.stroke = 'var(--danger)';
+        } else if (usedPercentage >= 75) {
+            banner.textContent = 'Aviso: Estás cerca de alcanzar el límite mensual de tu cuenta.';
+            banner.className = 'warning-banner show alert-yellow';
+            storageCard.className = 'card warning';
+            circle.style.stroke = 'var(--warning)';
+        } else {
+            banner.className = 'warning-banner';
+            storageCard.className = 'card primary';
+            circle.style.stroke = 'var(--primary)';
+        }
+
+        // Populate Repo Stats
+        const repos = data.repositories || [];
+        document.getElementById('repo-stats-total').textContent = repos.length;
+        document.getElementById('repo-count-badge').textContent = repos.length;
+        
+        let dirtyCount = 0;
+        let outSyncCount = 0;
+        let dubiousCount = 0;
+        
+        repos.forEach(r => {
+            if (r.status === 'dirty') dirtyCount++;
+            if (r.remote_status && r.remote_status !== 'synced' && r.remote_status !== 'no_remote') outSyncCount++;
+            if (r.is_dubious) dubiousCount++;
+        });
+
+        let summaryText = 'Todos los repositorios sincronizados y limpios.';
+        if (dirtyCount > 0 || outSyncCount > 0 || dubiousCount > 0) {
+            const issues = [];
+            if (dirtyCount > 0) issues.push(`${dirtyCount} sucios`);
+            if (outSyncCount > 0) issues.push(`${outSyncCount} desincronizados`);
+            if (dubiousCount > 0) issues.push(`${dubiousCount} sin permisos`);
+            summaryText = `Requieren atención: ${issues.join(', ')}.`;
+        }
+        document.getElementById('repo-stats-summary').textContent = summaryText;
+
+        // Inject Repositories
+        const repoContainer = document.getElementById('repo-container');
+        if (repos.length === 0) {
+            repoContainer.innerHTML = `<div class="card" style="grid-column: 1/-1; text-align: center; color: var(--text-muted);">No se detectaron repositorios de Git.</div>`;
+        } else {
+            repoContainer.innerHTML = '';
+            repos.forEach(repo => {
+                const rCard = document.createElement('div');
+                rCard.className = 'repo-card';
+                
+                const badges = [];
+                if (repo.is_dubious) {
+                    badges.push(`<span class="status-badge dubious">Sin permisos</span>`);
+                } else {
+                    if (repo.status === 'dirty') {
+                        badges.push(`<span class="status-badge dirty">Modificaciones</span>`);
+                    }
+                    
+                    const rem = repo.remote_status;
+                    if (rem === 'synced') {
+                        if (repo.status === 'clean') {
+                            badges.push(`<span class="status-badge clean-synced">Al día</span>`);
+                        } else {
+                            badges.push(`<span class="status-badge clean-synced">Sincronizado</span>`);
+                        }
+                    } else if (rem === 'ahead') {
+                        badges.push(`<span class="status-badge ahead">Ahead (+${repo.ahead_count})</span>`);
+                    } else if (rem === 'behind') {
+                        badges.push(`<span class="status-badge behind">Behind (-${repo.behind_count})</span>`);
+                    } else if (rem === 'diverged') {
+                        badges.push(`<span class="status-badge behind">Diverged (+${repo.ahead_count}/-${repo.behind_count})</span>`);
+                    } else if (rem === 'no_remote' || rem === 'no_upstream') {
+                        badges.push(`<span class="status-badge local">Solo Local</span>`);
+                    }
+                }
+
+                let details = '';
+                if (repo.error) {
+                    details = `<div class="repo-meta" style="color: var(--danger); font-weight: 600;">Error: ${repo.error}</div>`;
+                } else {
+                    const dirtyMsg = repo.status === 'dirty' ? `${repo.uncommitted_changes_count} archivos locales sin confirmar.` : 'Sin cambios pendientes.';
+                    details = `<div class="repo-meta">${dirtyMsg}</div>`;
+                }
+
+                rCard.innerHTML = `
+                    <div class="repo-header">
+                        <span class="repo-name" title="${repo.name}">${repo.name}</span>
+                        <span class="repo-branch" title="Rama activa">${repo.branch}</span>
+                    </div>
+                    <div class="repo-badges">
+                        ${badges.join('')}
+                    </div>
+                    ${details}
+                `;
+                repoContainer.appendChild(rCard);
+            });
+        }
+
+        // Inject Files List
+        const files = data.s3_files || [];
+        const tableBody = document.getElementById('files-table-body');
+        document.getElementById('files-count-badge').textContent = files.length;
+
+        if (files.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty-state">No se han registrado archivos en tránsito ni subidos a S3.</td>
+                </tr>
+            `;
+        } else {
+            tableBody.innerHTML = '';
+            files.forEach(file => {
+                const tr = document.createElement('tr');
+                
+                const statusHtml = file.uploaded 
+                    ? `<span class="file-status uploaded">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-right: 2px;"><circle cx="6" cy="6" r="5" fill="var(--success)" opacity="0.2"/><path d="M4 6l1.5 1.5L9 4" stroke="var(--success)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        Subido a S3
+                       </span>`
+                    : `<span class="file-status transit">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="margin-right: 2px;"><circle cx="6" cy="6" r="5" fill="var(--warning)" opacity="0.2"/><circle cx="6" cy="6" r="2.5" fill="var(--warning)"/></svg>
+                        En Tránsito
+                       </span>`;
+
+                const fileBaseName = file.rel_path.split(/[\\/]/).pop();
+
+                tr.innerHTML = `
+                    <td>
+                        <div class="file-name" title="${file.rel_path}">${fileBaseName}</div>
+                        <div class="file-path" title="${file.rel_path}">${file.rel_path}</div>
+                    </td>
+                    <td style="font-weight: 600;">${file.repo}</td>
+                    <td class="file-size">${formatSize(file.size)}</td>
+                    <td style="font-family: monospace; font-size: 0.75rem; color: var(--text-muted);" title="${file.s3_key}">${file.s3_key}</td>
+                    <td>${statusHtml}</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+    </script>
+</body>
+</html>
